@@ -1,148 +1,479 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>All Rounder Dashboard</title>
+    <title>All Rounder | Dashboard</title>
 
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <header>
-        <div class="brand">
-            🤖 All Rounder
+    <!-- Sidebar -->
+
+    <aside class="sidebar">
+
+        <div class="logo">
+            🤖 <span>All Rounder</span>
         </div>
 
-        <div class="status">
-            <span class="dot"></span>
-            ONLINE
+        <nav>
+
+            <button class="nav-btn active" data-page="dashboard">
+                🏠 Dashboard
+            </button>
+
+            <button class="nav-btn" data-page="moderation">
+                🛡️ Moderation
+            </button>
+
+            <button class="nav-btn" data-page="antispam">
+                🚨 Anti-Spam
+            </button>
+
+            <button class="nav-btn" data-page="commands">
+                ⚡ Commands
+            </button>
+
+            <button class="nav-btn" data-page="settings">
+                ⚙️ Settings
+            </button>
+
+        </nav>
+
+        <div class="sidebar-bottom">
+            All Rounder V2
         </div>
-    </header>
+
+    </aside>
 
 
-    <main>
+    <!-- Main -->
 
-        <section class="hero">
-            <h1>All Rounder</h1>
+    <main class="main">
 
-            <p>
-                Discord Bot Dashboard
-            </p>
+        <!-- Top bar -->
 
-            <div class="online-box">
-                🟢 Bot is Online
+        <header class="topbar">
+
+            <div>
+                <h1 id="page-title">Dashboard</h1>
+                <p id="page-subtitle">
+                    Welcome to All Rounder
+                </p>
             </div>
+
+            <div class="top-actions">
+
+                <button id="refreshBtn">
+                    🔄 Refresh
+                </button>
+
+                <div class="status">
+                    <span class="status-dot"></span>
+                    Online
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <!-- Dashboard Page -->
+
+        <section class="page active" id="dashboard">
+
+            <div class="welcome">
+
+                <div>
+                    <h2>👋 Welcome back!</h2>
+
+                    <p>
+                        Manage your All Rounder Discord bot
+                        from this dashboard.
+                    </p>
+                </div>
+
+                <div class="bot-avatar">
+                    🤖
+                </div>
+
+            </div>
+
+
+            <!-- Statistics -->
+
+            <div class="stats-grid">
+
+                <div class="stat-card">
+                    <span>🌐</span>
+                    <h3>1</h3>
+                    <p>Servers</p>
+                </div>
+
+                <div class="stat-card">
+                    <span>👥</span>
+                    <h3 id="memberCount">—</h3>
+                    <p>Members</p>
+                </div>
+
+                <div class="stat-card">
+                    <span>🛡️</span>
+                    <h3>ON</h3>
+                    <p>Moderation</p>
+                </div>
+
+                <div class="stat-card">
+                    <span>🚨</span>
+                    <h3>ON</h3>
+                    <p>Anti-Spam</p>
+                </div>
+
+            </div>
+
+
+            <!-- Status -->
+
+            <div class="panel">
+
+                <div class="panel-title">
+                    <h2>🤖 Bot Status</h2>
+
+                    <span class="badge success">
+                        ONLINE
+                    </span>
+                </div>
+
+                <div class="info-grid">
+
+                    <div>
+                        <small>Bot Name</small>
+                        <strong>All Rounder</strong>
+                    </div>
+
+                    <div>
+                        <small>Prefix</small>
+                        <strong>!</strong>
+                    </div>
+
+                    <div>
+                        <small>Dashboard</small>
+                        <strong>V2</strong>
+                    </div>
+
+                    <div>
+                        <small>Time</small>
+                        <strong id="currentTime">--:--:--</strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Quick Actions -->
+
+            <div class="panel">
+
+                <div class="panel-title">
+                    <h2>⚡ Quick Actions</h2>
+                </div>
+
+                <div class="quick-actions">
+
+                    <button data-page-target="moderation">
+                        🛡️ Moderation
+                    </button>
+
+                    <button data-page-target="antispam">
+                        🚨 Anti-Spam
+                    </button>
+
+                    <button data-page-target="commands">
+                        📋 Commands
+                    </button>
+
+                    <button data-page-target="settings">
+                        ⚙️ Settings
+                    </button>
+
+                </div>
+
+            </div>
+
         </section>
 
 
-        <section class="stats">
+        <!-- Moderation -->
 
-            <div class="card">
-                <div class="icon">🌐</div>
-                <h2>1</h2>
-                <p>Servers</p>
-            </div>
+        <section class="page" id="moderation">
 
-            <div class="card">
-                <div class="icon">👥</div>
-                <h2>—</h2>
-                <p>Members</p>
-            </div>
+            <div class="panel">
 
-            <div class="card">
-                <div class="icon">🛡️</div>
-                <h2>ON</h2>
-                <p>Anti-Spam</p>
-            </div>
+                <h2>🛡️ Moderation</h2>
 
-            <div class="card">
-                <div class="icon">⚡</div>
-                <h2>24/7</h2>
-                <p>Protection</p>
-            </div>
+                <div class="setting-row">
 
-        </section>
+                    <div>
+                        <strong>Warning System</strong>
+                        <p>Allow moderators to warn members.</p>
+                    </div>
+
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span></span>
+                    </label>
+
+                </div>
 
 
-        <section class="panel">
+                <div class="setting-row">
 
-            <h2>🛡️ Moderation</h2>
+                    <div>
+                        <strong>Timeout System</strong>
+                        <p>Allow temporary member timeouts.</p>
+                    </div>
 
-            <div class="feature">
-                <span>🚨 Anti-Spam Protection</span>
-                <strong>ENABLED</strong>
-            </div>
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span></span>
+                    </label>
 
-            <div class="feature">
-                <span>🔇 Timeout System</span>
-                <strong>ENABLED</strong>
-            </div>
-
-            <div class="feature">
-                <span>⚠️ Warning System</span>
-                <strong>ENABLED</strong>
-            </div>
-
-        </section>
+                </div>
 
 
-        <section class="panel">
+                <div class="setting-row">
 
-            <h2>⚡ Commands</h2>
+                    <div>
+                        <strong>Kick Command</strong>
+                        <p>Enable the !kick command.</p>
+                    </div>
 
-            <div class="commands">
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span></span>
+                    </label>
 
-                <span>!help</span>
-                <span>!hi</span>
-                <span>!ping</span>
-                <span>!serverinfo</span>
-                <span>!userinfo</span>
-                <span>!warn</span>
-                <span>!warnings</span>
-                <span>!timeout</span>
-                <span>!kick</span>
-                <span>!ban</span>
-                <span>!clear</span>
+                </div>
+
+
+                <div class="setting-row">
+
+                    <div>
+                        <strong>Ban Command</strong>
+                        <p>Enable the !ban command.</p>
+                    </div>
+
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span></span>
+                    </label>
+
+                </div>
 
             </div>
 
         </section>
 
 
-        <section class="panel">
+        <!-- Anti Spam -->
 
-            <h2>ℹ️ Bot Information</h2>
+        <section class="page" id="antispam">
 
-            <p>
-                <b>Name:</b> All Rounder
-            </p>
+            <div class="panel">
 
-            <p>
-                <b>Platform:</b> Discord
-            </p>
+                <h2>🚨 Anti-Spam Protection</h2>
 
-            <p>
-                <b>Prefix:</b> !
-            </p>
+                <div class="setting-row">
 
-            <p>
-                <b>Dashboard:</b> V1
-            </p>
+                    <div>
+                        <strong>Anti-Spam</strong>
+                        <p>Detect rapid message spam.</p>
+                    </div>
+
+                    <label class="switch">
+                        <input type="checkbox" id="spamToggle" checked>
+                        <span></span>
+                    </label>
+
+                </div>
+
+
+                <div class="number-setting">
+
+                    <label>
+                        Messages allowed
+                    </label>
+
+                    <input
+                        type="number"
+                        id="spamLimit"
+                        value="5"
+                        min="1"
+                        max="20"
+                    >
+
+                </div>
+
+
+                <div class="number-setting">
+
+                    <label>
+                        Time window (seconds)
+                    </label>
+
+                    <input
+                        type="number"
+                        id="spamTime"
+                        value="10"
+                        min="1"
+                        max="60"
+                    >
+
+                </div>
+
+
+                <button class="save-btn" id="saveSpam">
+                    💾 Save Anti-Spam Settings
+                </button>
+
+            </div>
 
         </section>
+
+
+        <!-- Commands -->
+
+        <section class="page" id="commands">
+
+            <div class="panel">
+
+                <h2>⚡ Commands</h2>
+
+                <div class="command-list">
+
+                    <div>
+                        <code>!hi</code>
+                        <span>Say hello</span>
+                    </div>
+
+                    <div>
+                        <code>!ping</code>
+                        <span>Check bot latency</span>
+                    </div>
+
+                    <div>
+                        <code>!help</code>
+                        <span>Show commands</span>
+                    </div>
+
+                    <div>
+                        <code>!serverinfo</code>
+                        <span>Server information</span>
+                    </div>
+
+                    <div>
+                        <code>!userinfo</code>
+                        <span>User information</span>
+                    </div>
+
+                    <div>
+                        <code>!warn</code>
+                        <span>Warn a member</span>
+                    </div>
+
+                    <div>
+                        <code>!timeout</code>
+                        <span>Timeout a member</span>
+                    </div>
+
+                    <div>
+                        <code>!kick</code>
+                        <span>Kick a member</span>
+                    </div>
+
+                    <div>
+                        <code>!ban</code>
+                        <span>Ban a member</span>
+                    </div>
+
+                    <div>
+                        <code>!clear</code>
+                        <span>Delete messages</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Settings -->
+
+        <section class="page" id="settings">
+
+            <div class="panel">
+
+                <h2>⚙️ Settings</h2>
+
+                <div class="setting-row">
+
+                    <div>
+                        <strong>Bot Status</strong>
+                        <p>Current bot connection status.</p>
+                    </div>
+
+                    <span class="badge success">
+                        ONLINE
+                    </span>
+
+                </div>
+
+
+                <div class="setting-row">
+
+                    <div>
+                        <strong>Command Prefix</strong>
+                        <p>Commands currently use !</p>
+                    </div>
+
+                    <strong>!</strong>
+
+                </div>
+
+
+                <div class="setting-row">
+
+                    <div>
+                        <strong>Dashboard Version</strong>
+                        <p>Current dashboard version.</p>
+                    </div>
+
+                    <strong>V2</strong>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <footer>
+            All Rounder • Discord Bot Dashboard V2
+        </footer>
 
     </main>
 
 
-    <footer>
-        All Rounder • Discord Bot Dashboard V1
-    </footer>
+    <div id="toast"></div>
 
 
     <script src="script.js"></script>
 
 </body>
+
 </html>
