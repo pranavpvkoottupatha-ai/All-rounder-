@@ -1,0 +1,295 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    color: #f8fafc;
+    min-height: 100vh;
+}
+
+/* Header */
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 18px 6%;
+
+    background: #111827;
+    border-bottom: 1px solid #334155;
+
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.brand {
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    font-size: 13px;
+    font-weight: bold;
+
+    color: #22c55e;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+
+    background: #22c55e;
+    border-radius: 50%;
+
+    box-shadow: 0 0 10px #22c55e;
+}
+
+
+/* Main */
+
+main {
+    width: 90%;
+    max-width: 1100px;
+
+    margin: auto;
+    padding: 35px 0;
+}
+
+
+/* Hero */
+
+.hero {
+    text-align: center;
+
+    padding: 45px 20px;
+
+    background: #1e293b;
+
+    border: 1px solid #334155;
+    border-radius: 20px;
+
+    margin-bottom: 25px;
+}
+
+.hero h1 {
+    font-size: 42px;
+    margin-bottom: 8px;
+}
+
+.hero p {
+    color: #94a3b8;
+    font-size: 17px;
+}
+
+.online-box {
+    display: inline-block;
+
+    margin-top: 20px;
+    padding: 10px 18px;
+
+    background: #14532d;
+    color: #86efac;
+
+    border-radius: 30px;
+
+    font-weight: bold;
+}
+
+
+/* Statistics */
+
+.stats {
+    display: grid;
+
+    grid-template-columns: repeat(4, 1fr);
+
+    gap: 18px;
+
+    margin-bottom: 25px;
+}
+
+.card {
+    background: #1e293b;
+
+    border: 1px solid #334155;
+
+    border-radius: 16px;
+
+    padding: 25px;
+
+    text-align: center;
+
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+}
+
+.icon {
+    font-size: 30px;
+    margin-bottom: 10px;
+}
+
+.card h2 {
+    font-size: 28px;
+    margin-bottom: 5px;
+}
+
+.card p {
+    color: #94a3b8;
+}
+
+
+/* Panels */
+
+.panel {
+    background: #1e293b;
+
+    border: 1px solid #334155;
+
+    border-radius: 18px;
+
+    padding: 25px;
+
+    margin-bottom: 22px;
+}
+
+.panel h2 {
+    margin-bottom: 20px;
+}
+
+
+/* Feature rows */
+
+.feature {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 15px 0;
+
+    border-bottom: 1px solid #334155;
+}
+
+.feature:last-child {
+    border-bottom: none;
+}
+
+.feature strong {
+    color: #22c55e;
+    font-size: 13px;
+}
+
+
+/* Commands */
+
+.commands {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 10px;
+}
+
+.commands span {
+    background: #0f172a;
+
+    border: 1px solid #475569;
+
+    padding: 9px 13px;
+
+    border-radius: 10px;
+
+    color: #cbd5e1;
+
+    font-family: monospace;
+}
+
+
+/* Bot information */
+
+.panel p {
+    color: #cbd5e1;
+
+    margin: 10px 0;
+}
+
+.panel p b {
+    color: white;
+}
+
+
+/* Footer */
+
+footer {
+    text-align: center;
+
+    padding: 25px;
+
+    color: #64748b;
+
+    border-top: 1px solid #334155;
+
+    margin-top: 20px;
+}
+
+
+/* Mobile */
+
+@media (max-width: 800px) {
+
+    .stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .hero h1 {
+        font-size: 34px;
+    }
+}
+
+
+@media (max-width: 500px) {
+
+    header {
+        padding: 15px 5%;
+    }
+
+    .brand {
+        font-size: 18px;
+    }
+
+    main {
+        width: 94%;
+        padding-top: 20px;
+    }
+
+    .stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .card {
+        padding: 18px 10px;
+    }
+
+    .card h2 {
+        font-size: 23px;
+    }
+
+    .feature {
+        gap: 15px;
+    }
+
+}
