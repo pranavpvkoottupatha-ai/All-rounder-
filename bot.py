@@ -2,53 +2,94 @@ import os
 import random
 import re
 import time
-from datetime import timedelta
+
 from collections import defaultdict, deque
+from datetime import timedelta
 
 import discord
 from discord.ext import commands
 
 
-# =========================================================
-# TOKEN
-# =========================================================
+# ============================================================
+# CONFIGURATION
+# ============================================================
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:
-    raise RuntimeError("DISCORD_TOKEN is not set in GitHub Secrets.")
+    raise RuntimeError(
+        "DISCORD_TOKEN secret was not found."
+    )
 
 
-# =========================================================
-# INTENTS
-# =========================================================
+# ============================================================
+# DISCORD INTENTS
+# ============================================================
 
 intents = discord.Intents.default()
+
 intents.message_content = True
 intents.members = True
 
 
-# =========================================================
+# ============================================================
+# COMMAND PREFIX
+# ============================================================
+
+def get_prefix(bot, message):
+    """
+    Supports both:
+
+    hi
+    !hi
+
+    ping
+    !ping
+
+    etc.
+    """
+
+    content = message.content.strip()
+
+    if not content:
+        return ["!"]
+
+    first_word = content.split()[0].lower()
+
+    # Remove ! from !command
+    command_name = first_word.lstrip("!")
+
+    # If this is an actual bot command,
+    # allow both !command and command.
+    if bot.get_command(command_name):
+        return ["", "!"]
+
+    # Normal messages still require !
+    return ["!"]
+
+
+# ============================================================
 # BOT
-# =========================================================
+# ============================================================
 
 bot = commands.Bot(
-    command_prefix="!",
+    command_prefix=get_prefix,
     intents=intents,
     help_command=None
 )
 
 
-# =========================================================
+# ============================================================
 # ANTI-SPAM
-# =========================================================
+# ============================================================
 
 message_history = defaultdict(
     lambda: deque(maxlen=10)
 )
 
-SPAM_LIMIT = 6
-SPAM_TIME = 7
+# 5 messages in 5 seconds
+SPAM_LIMIT = 5
+SPAM_TIME = 5
 
 INVITE_PATTERN = re.compile(
     r"(discord\.gg/|discord\.com/invite/)",
@@ -57,121 +98,214 @@ INVITE_PATTERN = re.compile(
 
 
 async def punish_spammer(message, reason):
+
     member = message.author
 
+    if not isinstance(member, discord.Member):
+        return
+
     try:
-        if isinstance(member, discord.Member):
 
-            if member.guild_permissions.administrator:
-                return
+        # Don't punish administrators
+        if member.guild_permissions.administrator:
+            return
 
-            await member.timeout(
-                timedelta(minutes=1),
-                reason=reason
-            )
+        # Timeout for 1 minute
+        await member.timeout(
+            timedelta(minutes=1),
+            reason=reason
+        )
 
-            await message.channel.send(
-                f"⚠️ {member.mention} was timed out for 1 minute.\n"
-                f"Reason: {reason}"
-            )
+        await message.channel.send(
+            f"⚠️ {member.mention} was timed out for "
+            f"1 minute.\n"
+            f"**Reason:** {reason}"
+        )
 
     except discord.Forbidden:
-        print("Missing permission to timeout member.")
 
-    except Exception as e:
-        print(f"Anti-spam error: {e}")
+        print(
+            "❌ Missing permission to timeout member."
+        )
+
+    except Exception as error:
+
+        print(
+            f"❌ Anti-spam error: {error}"
+        )
 
 
-# =========================================================
-# BOT READY
-# =========================================================
+# ============================================================
+# READY EVENT
+# ============================================================
 
 @bot.event
 async def on_ready():
 
-    print("-----------------------------------")
-    print(f"Logged in as: {bot.user}")
-    print(f"Bot ID: {bot.user.id}")
-    print(f"Servers: {len(bot.guilds)}")
-    print("All Rounder is ONLINE!")
-    print("-----------------------------------")
+    print(
+        f"Logged in as: {bot.user}"
+    )
+
+    print(
+        f"Bot ID: {bot.user.id}"
+    )
+
+    print(
+        f"Servers: {len(bot.guilds)}"
+    )
+
+    print(
+        "All Rounder is ONLINE!"
+    )
 
     try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} slash commands.")
 
-    except Exception as e:
-        print(f"Slash command sync error: {e}")
+        await bot.change_presence(
+            activity=discord.Game(
+                name="Type hi or !help"
+            )
+        )
+
+    except Exception as error:
+
+        print(
+            f"Presence error: {error}"
+        )
 
 
-# =========================================================
+# ============================================================
 # MEMBER JOIN
-# =========================================================
+# ============================================================
 
 @bot.event
 async def on_member_join(member):
 
-    print(
-        f"{member} joined {member.guild.name}"
+    channel = discord.utils.find(
+        lambda c:
+            c.name.lower() in [
+                "welcome",
+                "general",
+                "chat"
+            ],
+        member.guild.text_channels
     )
 
+    if channel:
 
-# =========================================================
+        try:
+
+            await channel.send(
+                f"👋 Welcome {member.mention} "
+                f"to **{member.guild.name}**!"
+            )
+
+        except discord.Forbidden:
+
+            pass
+
+
+# ============================================================
 # MEMBER LEAVE
-# =========================================================
+# ============================================================
 
 @bot.event
 async def on_member_remove(member):
 
-    print(
-        f"{member} left {member.guild.name}"
+    channel = discord.utils.find(
+        lambda c:
+            c.name.lower() in [
+                "welcome",
+                "general",
+                "chat"
+            ],
+        member.guild.text_channels
     )
 
+    if channel:
 
-# =========================================================
-# MESSAGE EVENT
-# =========================================================
+        try:
+
+            await channel.send(
+                f"👋 **{member.name}** has left "
+                f"the server."
+            )
+
+        except discord.Forbidden:
+
+            pass
+
+
+# ============================================================
+# MESSAGE / ANTI-SPAM SYSTEM
+# ============================================================
 
 @bot.event
 async def on_message(message):
 
+    # Ignore bots
     if message.author.bot:
         return
 
     now = time.time()
+
     user_id = message.author.id
 
     history = message_history[user_id]
 
-    history.append(
-        {
-            "time": now,
-            "content": message.content
-        }
-    )
+    history.append({
+        "time": now,
+        "content": message.content
+    })
 
-    # Remove old messages
-    while history and now - history[0]["time"] > SPAM_TIME:
+    # Remove messages older than 5 seconds
+    while (
+        history
+        and now - history[0]["time"] > SPAM_TIME
+    ):
         history.popleft()
 
-    # Rapid-message spam
+
+    # --------------------------------------------------------
+    # 5 MESSAGES IN 5 SECONDS
+    # --------------------------------------------------------
+
     if len(history) >= SPAM_LIMIT:
+
+        await message.channel.send(
+            f"🚨 {message.author.mention} "
+            f"**Spam detected!**\n"
+            f"Please slow down."
+        )
 
         await punish_spammer(
             message,
-            "Too many messages in a short time."
+            "5 messages sent within 5 seconds."
         )
 
         history.clear()
+
         return
 
-    # Repeated messages
+
+    # --------------------------------------------------------
+    # REPEATED MESSAGE CHECK
+    # --------------------------------------------------------
+
     recent = [
         item["content"]
         for item in list(history)[-3:]
     ]
 
-    if len(recent) == 3 and len(set(recent)) == 1:
+    if (
+        len(recent) == 3
+        and len(set(recent)) == 1
+        and recent[0] != ""
+    ):
+
+        await message.channel.send(
+            f"⚠️ {message.author.mention} "
+            f"Repeated messages detected."
+        )
 
         await punish_spammer(
             message,
@@ -179,10 +313,22 @@ async def on_message(message):
         )
 
         history.clear()
+
         return
 
-    # Discord invite detection
-    if INVITE_PATTERN.search(message.content):
+
+    # --------------------------------------------------------
+    # DISCORD INVITE CHECK
+    # --------------------------------------------------------
+
+    if INVITE_PATTERN.search(
+        message.content
+    ):
+
+        await message.channel.send(
+            f"⚠️ {message.author.mention} "
+            f"Discord invite detected."
+        )
 
         await punish_spammer(
             message,
@@ -191,8 +337,17 @@ async def on_message(message):
 
         return
 
-    # Mass mention detection
+
+    # --------------------------------------------------------
+    # MASS MENTION CHECK
+    # --------------------------------------------------------
+
     if len(message.mentions) >= 5:
+
+        await message.channel.send(
+            f"⚠️ {message.author.mention} "
+            f"Mass mentions detected."
+        )
 
         await punish_spammer(
             message,
@@ -201,27 +356,17 @@ async def on_message(message):
 
         return
 
+
+    # IMPORTANT:
+    # This allows the commands to work.
     await bot.process_commands(message)
 
 
-# =========================================================
-# !HELLO
-# =========================================================
+# ============================================================
+# BASIC COMMANDS
+# ============================================================
 
-@bot.command(name="hello")
-async def hello(ctx):
-
-    await ctx.send(
-        f"👋 Hello {ctx.author.mention}! "
-        f"I'm **All Rounder**."
-    )
-
-
-# =========================================================
-# !HI
-# =========================================================
-
-@bot.command(name="hi")
+@bot.command()
 async def hi(ctx):
 
     await ctx.send(
@@ -229,11 +374,15 @@ async def hi(ctx):
     )
 
 
-# =========================================================
-# !PING
-# =========================================================
+@bot.command()
+async def hello(ctx):
 
-@bot.command(name="ping")
+    await ctx.send(
+        f"👋 Hello {ctx.author.mention}!"
+    )
+
+
+@bot.command()
 async def ping(ctx):
 
     latency = round(
@@ -241,21 +390,22 @@ async def ping(ctx):
     )
 
     await ctx.send(
-        f"🏓 Pong! **{latency}ms**"
+        f"🏓 Pong! `{latency}ms`"
     )
 
 
-# =========================================================
-# !SERVERINFO
-# =========================================================
+# ============================================================
+# SERVER INFO
+# ============================================================
 
-@bot.command(name="serverinfo")
+@bot.command()
 async def serverinfo(ctx):
 
     guild = ctx.guild
 
     embed = discord.Embed(
-        title="📊 Server Information"
+        title="🌐 Server Information",
+        color=discord.Color.blue()
     )
 
     embed.add_field(
@@ -266,17 +416,20 @@ async def serverinfo(ctx):
 
     embed.add_field(
         name="Members",
-        value=str(guild.member_count)
+        value=guild.member_count,
+        inline=True
     )
 
     embed.add_field(
         name="Channels",
-        value=str(len(guild.channels))
+        value=len(guild.channels),
+        inline=True
     )
 
     embed.add_field(
-        name="Server ID",
-        value=str(guild.id)
+        name="Roles",
+        value=len(guild.roles),
+        inline=True
     )
 
     await ctx.send(
@@ -284,36 +437,42 @@ async def serverinfo(ctx):
     )
 
 
-# =========================================================
-# !USERINFO
-# =========================================================
+# ============================================================
+# USER INFO
+# ============================================================
 
-@bot.command(name="userinfo")
-async def userinfo(
-    ctx,
-    member: discord.Member = None
-):
+@bot.command()
+async def userinfo(ctx, member: discord.Member = None):
 
     member = member or ctx.author
 
     embed = discord.Embed(
-        title="👤 User Information"
+        title="👤 User Information",
+        color=discord.Color.green()
     )
 
     embed.add_field(
-        name="User",
+        name="Username",
         value=str(member),
         inline=False
     )
 
     embed.add_field(
         name="ID",
-        value=str(member.id)
+        value=member.id,
+        inline=False
     )
 
     embed.add_field(
-        name="Bot",
-        value="Yes" if member.bot else "No"
+        name="Joined Server",
+        value=(
+            member.joined_at.strftime(
+                "%d %B %Y"
+            )
+            if member.joined_at
+            else "Unknown"
+        ),
+        inline=False
     )
 
     await ctx.send(
@@ -321,11 +480,11 @@ async def userinfo(
     )
 
 
-# =========================================================
-# !CLEAR
-# =========================================================
+# ============================================================
+# CLEAR
+# ============================================================
 
-@bot.command(name="clear")
+@bot.command()
 @commands.has_permissions(
     manage_messages=True
 )
@@ -345,495 +504,44 @@ async def clear(ctx, amount: int = 10):
     )
 
     msg = await ctx.send(
-        f"🧹 Deleted **{len(deleted) - 1}** messages."
+        f"🧹 Deleted {len(deleted) - 1} messages."
     )
 
-    await msg.delete(delay=3)
+    await msg.delete(
+        delay=5
+    )
 
 
-# =========================================================
-# !TIMEOUT
-# =========================================================
+# ============================================================
+# TIMEOUT
+# ============================================================
 
-@bot.command(name="timeout")
+@bot.command()
 @commands.has_permissions(
     moderate_members=True
 )
 async def timeout(
     ctx,
     member: discord.Member,
-    minutes: int = 5,
-    *,
-    reason="No reason provided"
+    minutes: int = 1
 ):
 
     if minutes < 1:
         minutes = 1
 
-    if minutes > 40320:
-        minutes = 40320
+    if minutes > 10080:
+        minutes = 10080
 
     await member.timeout(
         timedelta(minutes=minutes),
-        reason=reason
+        reason=f"Timeout by {ctx.author}"
     )
 
     await ctx.send(
-        f"⏱️ {member.mention} was timed out "
-        f"for **{minutes} minutes**.\n"
-        f"Reason: {reason}"
+        f"🔇 {member.mention} was timed out "
+        f"for {minutes} minute(s)."
     )
 
 
-# =========================================================
-# !KICK
-# =========================================================
-
-@bot.command(name="kick")
-@commands.has_permissions(
-    kick_members=True
-)
-async def kick(
-    ctx,
-    member: discord.Member,
-    *,
-    reason="No reason provided"
-):
-
-    await member.kick(
-        reason=reason
-    )
-
-    await ctx.send(
-        f"👢 **{member}** was kicked.\n"
-        f"Reason: {reason}"
-    )
-
-
-# =========================================================
-# !BAN
-# =========================================================
-
-@bot.command(name="ban")
-@commands.has_permissions(
-    ban_members=True
-)
-async def ban(
-    ctx,
-    member: discord.Member,
-    *,
-    reason="No reason provided"
-):
-
-    await member.ban(
-        reason=reason
-    )
-
-    await ctx.send(
-        f"🔨 **{member}** was banned.\n"
-        f"Reason: {reason}"
-    )
-
-
-# =========================================================
-# !WARN
-# =========================================================
-
-warnings = defaultdict(int)
-
-
-@bot.command(name="warn")
-@commands.has_permissions(
-    moderate_members=True
-)
-async def warn(
-    ctx,
-    member: discord.Member,
-    *,
-    reason="No reason provided"
-):
-
-    warnings[member.id] += 1
-
-    await ctx.send(
-        f"⚠️ {member.mention} has been warned.\n"
-        f"Warnings: **{warnings[member.id]}**\n"
-        f"Reason: {reason}"
-    )
-
-
-# =========================================================
-# !WARNINGS
-# =========================================================
-
-@bot.command(name="warnings")
-async def warning_count(
-    ctx,
-    member: discord.Member = None
-):
-
-    member = member or ctx.author
-
-    count = warnings[member.id]
-
-    await ctx.send(
-        f"⚠️ **{member}** has "
-        f"**{count}** warning(s)."
-    )
-
-
-# =========================================================
-# !COIN
-# =========================================================
-
-@bot.command(name="coin")
-async def coin(ctx):
-
-    result = random.choice(
-        ["Heads 🪙", "Tails 🪙"]
-    )
-
-    await ctx.send(
-        f"🪙 **{result}**"
-    )
-
-
-# =========================================================
-# !DICE
-# =========================================================
-
-@bot.command(name="dice")
-async def dice(ctx):
-
-    number = random.randint(1, 6)
-
-    await ctx.send(
-        f"🎲 You rolled **{number}**!"
-    )
-
-
-# =========================================================
-# !CHOOSE
-# =========================================================
-
-@bot.command(name="choose")
-async def choose(ctx, *choices):
-
-    if len(choices) < 2:
-
-        await ctx.send(
-            "❌ Give me at least two choices.\n"
-            "Example: `!choose pizza burger`"
-        )
-
-        return
-
-    result = random.choice(
-        choices
-    )
-
-    await ctx.send(
-        f"🎯 I choose: **{result}**"
-    )
-
-
-# =========================================================
-# !EIGHTBALL
-# =========================================================
-
-@bot.command(name="eightball")
-async def eightball(
-    ctx,
-    *,
-    question=""
-):
-
-    if not question:
-
-        await ctx.send(
-            "🔮 Ask me a question!"
-        )
-
-        return
-
-    answers = [
-        "Yes 👍",
-        "No 👎",
-        "Maybe 🤔",
-        "Definitely! ✅",
-        "Ask again later 🔮",
-        "I don't know 😅"
-    ]
-
-    await ctx.send(
-        f"🔮 **{random.choice(answers)}**"
-    )
-
-
-# =========================================================
-# !POLL
-# =========================================================
-
-@bot.command(name="poll")
-async def poll(
-    ctx,
-    *,
-    question
-):
-
-    embed = discord.Embed(
-        title="📊 Poll",
-        description=question
-    )
-
-    msg = await ctx.send(
-        embed=embed
-    )
-
-    await msg.add_reaction("👍")
-    await msg.add_reaction("👎")
-
-
-# =========================================================
-# !LOCK
-# =========================================================
-
-@bot.command(name="lock")
-@commands.has_permissions(
-    manage_channels=True
-)
-async def lock(ctx):
-
-    overwrite = ctx.channel.overwrites_for(
-        ctx.guild.default_role
-    )
-
-    overwrite.send_messages = False
-
-    await ctx.channel.set_permissions(
-        ctx.guild.default_role,
-        overwrite=overwrite
-    )
-
-    await ctx.send(
-        "🔒 Channel locked."
-    )
-
-
-# =========================================================
-# !UNLOCK
-# =========================================================
-
-@bot.command(name="unlock")
-@commands.has_permissions(
-    manage_channels=True
-)
-async def unlock(ctx):
-
-    overwrite = ctx.channel.overwrites_for(
-        ctx.guild.default_role
-    )
-
-    overwrite.send_messages = True
-
-    await ctx.channel.set_permissions(
-        ctx.guild.default_role,
-        overwrite=overwrite
-    )
-
-    await ctx.send(
-        "🔓 Channel unlocked."
-    )
-
-
-# =========================================================
-# !SLOWMODE
-# =========================================================
-
-@bot.command(name="slowmode")
-@commands.has_permissions(
-    manage_channels=True
-)
-async def slowmode(
-    ctx,
-    seconds: int = 0
-):
-
-    if seconds < 0:
-        seconds = 0
-
-    if seconds > 21600:
-        seconds = 21600
-
-    await ctx.channel.edit(
-        slowmode_delay=seconds
-    )
-
-    await ctx.send(
-        f"🐌 Slowmode: **{seconds} seconds**"
-    )
-
-
-# =========================================================
-# !BOTINFO
-# =========================================================
-
-@bot.command(name="botinfo")
-async def botinfo(ctx):
-
-    embed = discord.Embed(
-        title="🤖 All Rounder",
-        description="Discord server assistant"
-    )
-
-    embed.add_field(
-        name="Servers",
-        value=str(len(bot.guilds))
-    )
-
-    embed.add_field(
-        name="Latency",
-        value=f"{round(bot.latency * 1000)}ms"
-    )
-
-    await ctx.send(
-        embed=embed
-    )
-
-
-# =========================================================
-# !HELP
-# =========================================================
-
-@bot.command(name="help")
-async def help_command(ctx):
-
-    embed = discord.Embed(
-        title="🤖 All Rounder Help",
-        description="Available commands"
-    )
-
-    embed.add_field(
-        name="👋 Basic",
-        value=(
-            "`!hello`\n"
-            "`!hi`\n"
-            "`!ping`\n"
-            "`!serverinfo`\n"
-            "`!userinfo`"
-        ),
-        inline=False
-    )
-
-    embed.add_field(
-        name="🛡️ Moderation",
-        value=(
-            "`!clear`\n"
-            "`!timeout`\n"
-            "`!kick`\n"
-            "`!ban`\n"
-            "`!warn`\n"
-            "`!warnings`\n"
-            "`!lock`\n"
-            "`!unlock`\n"
-            "`!slowmode`"
-        ),
-        inline=False
-    )
-
-    embed.add_field(
-        name="🎮 Fun",
-        value=(
-            "`!coin`\n"
-            "`!dice`\n"
-            "`!choose`\n"
-            "`!eightball`\n"
-            "`!poll`"
-        ),
-        inline=False
-    )
-
-    embed.add_field(
-        name="🤖 Bot",
-        value=(
-            "`!botinfo`\n"
-            "`!help`"
-        ),
-        inline=False
-    )
-
-    await ctx.send(
-        embed=embed
-    )
-
-
-# =========================================================
-# ERROR HANDLER
-# =========================================================
-
-@bot.event
-async def on_command_error(
-    ctx,
-    error
-):
-
-    if isinstance(
-        error,
-        commands.CommandNotFound
-    ):
-        return
-
-    if isinstance(
-        error,
-        commands.MissingPermissions
-    ):
-        await ctx.send(
-            "❌ You don't have permission "
-            "to use this command."
-        )
-        return
-
-    if isinstance(
-        error,
-        commands.MissingRequiredArgument
-    ):
-        await ctx.send(
-            "❌ Missing an argument. "
-            "Use `!help` for help."
-        )
-        return
-
-    if isinstance(
-        error,
-        commands.MemberNotFound
-    ):
-        await ctx.send(
-            "❌ I couldn't find that member."
-        )
-        return
-
-    if isinstance(
-        error,
-        commands.BadArgument
-    ):
-        await ctx.send(
-            "❌ Invalid argument."
-        )
-        return
-
-    print(
-        f"Command error: {repr(error)}"
-    )
-
-    await ctx.send(
-        "❌ Something went wrong."
-    )
-
-
-# =========================================================
-# START
-# =========================================================
-
-print("Starting All Rounder...")
-
-bot.run(TOKEN)
+# ============================================================
+# K
