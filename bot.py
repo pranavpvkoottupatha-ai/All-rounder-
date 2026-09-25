@@ -17,17 +17,14 @@ from discord.ext import commands
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:
-    raise RuntimeError(
-        "DISCORD_TOKEN secret was not found."
-    )
+    raise RuntimeError("DISCORD_TOKEN secret was not found.")
 
 
 # ============================================================
-# DISCORD INTENTS
+# INTENTS
 # ============================================================
 
 intents = discord.Intents.default()
-
 intents.message_content = True
 intents.members = True
 
@@ -44,7 +41,6 @@ def get_prefix(bot, message):
         return ["!"]
 
     first_word = content.split()[0].lower()
-
     command_name = first_word.lstrip("!")
 
     if bot.get_command(command_name):
@@ -106,15 +102,11 @@ async def punish_spammer(message, reason):
 
     except discord.Forbidden:
 
-        print(
-            "❌ Missing permission to timeout member."
-        )
+        print("❌ Missing permission to timeout member.")
 
     except Exception as error:
 
-        print(
-            f"❌ Anti-spam error: {error}"
-        )
+        print(f"❌ Anti-spam error: {error}")
 
 
 # ============================================================
@@ -124,35 +116,22 @@ async def punish_spammer(message, reason):
 @bot.event
 async def on_ready():
 
-    print(
-        f"Logged in as: {bot.user}"
-    )
-
-    print(
-        f"Bot ID: {bot.user.id}"
-    )
-
-    print(
-        f"Servers: {len(bot.guilds)}"
-    )
-
-    print(
-        "All Rounder is ONLINE!"
-    )
+    print(f"Logged in as: {bot.user}")
+    print(f"Bot ID: {bot.user.id}")
+    print(f"Servers: {len(bot.guilds)}")
+    print("All Rounder is ONLINE!")
 
     try:
 
         await bot.change_presence(
             activity=discord.Game(
-                name="Type hi or !help"
+                name="Type help or !help"
             )
         )
 
     except Exception as error:
 
-        print(
-            f"Presence error: {error}"
-        )
+        print(f"Presence error: {error}")
 
 
 # ============================================================
@@ -163,12 +142,11 @@ async def on_ready():
 async def on_member_join(member):
 
     channel = discord.utils.find(
-        lambda c:
-            c.name.lower() in [
-                "welcome",
-                "general",
-                "chat"
-            ],
+        lambda c: c.name.lower() in [
+            "welcome",
+            "general",
+            "chat"
+        ],
         member.guild.text_channels
     )
 
@@ -182,7 +160,6 @@ async def on_member_join(member):
             )
 
         except discord.Forbidden:
-
             pass
 
 
@@ -194,12 +171,11 @@ async def on_member_join(member):
 async def on_member_remove(member):
 
     channel = discord.utils.find(
-        lambda c:
-            c.name.lower() in [
-                "welcome",
-                "general",
-                "chat"
-            ],
+        lambda c: c.name.lower() in [
+            "welcome",
+            "general",
+            "chat"
+        ],
         member.guild.text_channels
     )
 
@@ -213,7 +189,6 @@ async def on_member_remove(member):
             )
 
         except discord.Forbidden:
-
             pass
 
 
@@ -228,7 +203,6 @@ async def on_message(message):
         return
 
     now = time.time()
-
     user_id = message.author.id
 
     history = message_history[user_id]
@@ -246,7 +220,7 @@ async def on_message(message):
 
 
     # --------------------------------------------------------
-    # 5 MESSAGES IN 5 SECONDS
+    # 5 MESSAGES / 5 SECONDS
     # --------------------------------------------------------
 
     if len(history) >= SPAM_LIMIT:
@@ -268,7 +242,7 @@ async def on_message(message):
 
 
     # --------------------------------------------------------
-    # REPEATED MESSAGE CHECK
+    # REPEATED MESSAGE
     # --------------------------------------------------------
 
     recent = [
@@ -298,12 +272,10 @@ async def on_message(message):
 
 
     # --------------------------------------------------------
-    # DISCORD INVITE CHECK
+    # DISCORD INVITE
     # --------------------------------------------------------
 
-    if INVITE_PATTERN.search(
-        message.content
-    ):
+    if INVITE_PATTERN.search(message.content):
 
         await message.channel.send(
             f"⚠️ {message.author.mention} "
@@ -319,7 +291,7 @@ async def on_message(message):
 
 
     # --------------------------------------------------------
-    # MASS MENTION CHECK
+    # MASS MENTION
     # --------------------------------------------------------
 
     if len(message.mentions) >= 5:
@@ -337,7 +309,6 @@ async def on_message(message):
         return
 
 
-    # Process commands
     await bot.process_commands(message)
 
 
@@ -364,9 +335,7 @@ async def hello(ctx):
 @bot.command()
 async def ping(ctx):
 
-    latency = round(
-        bot.latency * 1000
-    )
+    latency = round(bot.latency * 1000)
 
     await ctx.send(
         f"🏓 Pong! `{latency}ms`"
@@ -411,9 +380,7 @@ async def serverinfo(ctx):
         inline=True
     )
 
-    await ctx.send(
-        embed=embed
-    )
+    await ctx.send(embed=embed)
 
 
 # ============================================================
@@ -448,18 +415,14 @@ async def userinfo(
     embed.add_field(
         name="Joined Server",
         value=(
-            member.joined_at.strftime(
-                "%d %B %Y"
-            )
+            member.joined_at.strftime("%d %B %Y")
             if member.joined_at
             else "Unknown"
         ),
         inline=False
     )
 
-    await ctx.send(
-        embed=embed
-    )
+    await ctx.send(embed=embed)
 
 
 # ============================================================
@@ -467,9 +430,7 @@ async def userinfo(
 # ============================================================
 
 @bot.command()
-@commands.has_permissions(
-    manage_messages=True
-)
+@commands.has_permissions(manage_messages=True)
 async def clear(
     ctx,
     amount: int = 10
@@ -494,9 +455,7 @@ async def clear(
         f"🧹 Deleted {len(deleted) - 1} messages."
     )
 
-    await msg.delete(
-        delay=5
-    )
+    await msg.delete(delay=5)
 
 
 # ============================================================
@@ -504,9 +463,7 @@ async def clear(
 # ============================================================
 
 @bot.command()
-@commands.has_permissions(
-    moderate_members=True
-)
+@commands.has_permissions(moderate_members=True)
 async def timeout(
     ctx,
     member: discord.Member,
@@ -535,9 +492,7 @@ async def timeout(
 # ============================================================
 
 @bot.command()
-@commands.has_permissions(
-    kick_members=True
-)
+@commands.has_permissions(kick_members=True)
 async def kick(
     ctx,
     member: discord.Member,
@@ -545,9 +500,7 @@ async def kick(
     reason="No reason provided"
 ):
 
-    await member.kick(
-        reason=reason
-    )
+    await member.kick(reason=reason)
 
     await ctx.send(
         f"👢 {member.mention} was kicked.\n"
@@ -560,9 +513,7 @@ async def kick(
 # ============================================================
 
 @bot.command()
-@commands.has_permissions(
-    ban_members=True
-)
+@commands.has_permissions(ban_members=True)
 async def ban(
     ctx,
     member: discord.Member,
@@ -570,9 +521,7 @@ async def ban(
     reason="No reason provided"
 ):
 
-    await member.ban(
-        reason=reason
-    )
+    await member.ban(reason=reason)
 
     await ctx.send(
         f"🔨 {member.mention} was banned.\n"
@@ -581,16 +530,14 @@ async def ban(
 
 
 # ============================================================
-# WARN SYSTEM
+# WARN
 # ============================================================
 
 warnings = defaultdict(list)
 
 
 @bot.command()
-@commands.has_permissions(
-    moderate_members=True
-)
+@commands.has_permissions(moderate_members=True)
 async def warn(
     ctx,
     member: discord.Member,
@@ -598,9 +545,7 @@ async def warn(
     reason="No reason provided"
 ):
 
-    warnings[member.id].append(
-        reason
-    )
+    warnings[member.id].append(reason)
 
     await ctx.send(
         f"⚠️ {member.mention} has been warned.\n"
@@ -635,9 +580,7 @@ async def warnings_command(
 
     text = "\n".join(
         f"{i + 1}. {reason}"
-        for i, reason in enumerate(
-            user_warnings
-        )
+        for i, reason in enumerate(user_warnings)
     )
 
     await ctx.send(
@@ -669,10 +612,7 @@ async def coin(ctx):
 @bot.command()
 async def dice(ctx):
 
-    result = random.randint(
-        1,
-        6
-    )
+    result = random.randint(1, 6)
 
     await ctx.send(
         f"🎲 You rolled **{result}**!"
@@ -697,9 +637,7 @@ async def choose(
 
         return
 
-    result = random.choice(
-        choices
-    )
+    result = random.choice(choices)
 
     await ctx.send(
         f"🤔 I choose **{result}**!"
@@ -710,9 +648,7 @@ async def choose(
 # EIGHT BALL
 # ============================================================
 
-@bot.command(
-    name="eightball"
-)
+@bot.command(name="eightball")
 async def eightball(
     ctx,
     *,
@@ -768,9 +704,7 @@ async def poll(
 # ============================================================
 
 @bot.command()
-@commands.has_permissions(
-    manage_channels=True
-)
+@commands.has_permissions(manage_channels=True)
 async def lock(ctx):
 
     overwrite = ctx.channel.overwrites_for(
@@ -794,9 +728,7 @@ async def lock(ctx):
 # ============================================================
 
 @bot.command()
-@commands.has_permissions(
-    manage_channels=True
-)
+@commands.has_permissions(manage_channels=True)
 async def unlock(ctx):
 
     overwrite = ctx.channel.overwrites_for(
@@ -820,9 +752,7 @@ async def unlock(ctx):
 # ============================================================
 
 @bot.command()
-@commands.has_permissions(
-    manage_channels=True
-)
+@commands.has_permissions(manage_channels=True)
 async def slowmode(
     ctx,
     seconds: int = 0
@@ -839,8 +769,7 @@ async def slowmode(
     )
 
     await ctx.send(
-        f"🐢 Slowmode set to "
-        f"**{seconds} seconds**."
+        f"🐢 Slowmode set to **{seconds} seconds**."
     )
 
 
@@ -851,9 +780,7 @@ async def slowmode(
 @bot.command()
 async def botinfo(ctx):
 
-    latency = round(
-        bot.latency * 1000
-    )
+    latency = round(bot.latency * 1000)
 
     embed = discord.Embed(
         title="🤖 All Rounder",
@@ -885,173 +812,182 @@ async def botinfo(ctx):
         inline=False
     )
 
-    await ctx.send(
-        embed=embed
+    await ctx.send(embed=embed)
+
+
+# ============================================================
+# TICKET SYSTEM
+# ============================================================
+
+TICKET_CATEGORY_NAME = "Tickets"
+
+
+def get_ticket_category(guild):
+
+    return discord.utils.get(
+        guild.categories,
+        name=TICKET_CATEGORY_NAME
+    )
+
+
+async def create_ticket_category(guild):
+
+    category = get_ticket_category(guild)
+
+    if category:
+        return category
+
+    try:
+
+        category = await guild.create_category(
+            TICKET_CATEGORY_NAME,
+            reason="All Rounder ticket system"
+        )
+
+        return category
+
+    except discord.Forbidden:
+
+        return None
+
+
+def is_ticket_channel(channel):
+
+    return (
+        isinstance(channel, discord.TextChannel)
+        and channel.category is not None
+        and channel.category.name == TICKET_CATEGORY_NAME
     )
 
 
 # ============================================================
-# HELP
+# CREATE TICKET
+# ============================================================
+
+async def create_ticket(
+    guild,
+    member
+):
+
+    category = await create_ticket_category(guild)
+
+    if category is None:
+        return None, "❌ I don't have permission to create a ticket category."
+
+    # Check if user already has a ticket
+    for channel in category.text_channels:
+
+        if channel.topic == f"ticket_owner:{member.id}":
+
+            return channel, "⚠️ You already have an open ticket."
+
+
+    channel_name = (
+        f"ticket-{member.name.lower()}"
+    )
+
+    # Discord channel names can only contain
+    # lowercase letters, numbers, and hyphens.
+    channel_name = re.sub(
+        r"[^a-z0-9-]",
+        "-",
+        channel_name
+    )
+
+    channel_name = channel_name[:90]
+
+    overwrites = {
+
+        guild.default_role:
+            discord.PermissionOverwrite(
+                view_channel=False
+            ),
+
+        member:
+            discord.PermissionOverwrite(
+                view_channel=True,
+                send_messages=True,
+                read_message_history=True,
+                attach_files=True
+            ),
+
+        guild.me:
+            discord.PermissionOverwrite(
+                view_channel=True,
+                send_messages=True,
+                read_message_history=True,
+                manage_channels=True,
+                manage_messages=True
+            )
+    }
+
+    try:
+
+        channel = await guild.create_text_channel(
+            channel_name,
+            category=category,
+            topic=f"ticket_owner:{member.id}",
+            overwrites=overwrites,
+            reason="All Rounder ticket creation"
+        )
+
+        await channel.send(
+            f"🎫 Welcome {member.mention}!\n\n"
+            f"Please describe your issue and our staff "
+            f"can help you.\n\n"
+            f"Use `close` or `!close` when you are finished."
+        )
+
+        return channel, None
+
+    except discord.Forbidden:
+
+        return None, (
+            "❌ I don't have permission to create "
+            "ticket channels."
+        )
+
+    except Exception as error:
+
+        print(f"Ticket creation error: {error}")
+
+        return None, (
+            "❌ Something went wrong while creating "
+            "the ticket."
+        )
+
+
+# ============================================================
+# TICKET COMMAND
 # ============================================================
 
 @bot.command()
-async def help(ctx):
+@commands.guild_only()
+async def ticket(ctx):
 
-    embed = discord.Embed(
-        title="🤖 All Rounder Commands",
-        description=(
-            "Commands work with **!** or without it."
-        ),
-        color=discord.Color.gold()
+    channel, error = await create_ticket(
+        ctx.guild,
+        ctx.author
     )
 
-    embed.add_field(
-        name="👋 Basic",
-        value=(
-            "`hi` / `!hi`\n"
-            "`hello` / `!hello`\n"
-            "`ping` / `!ping`\n"
-            "`help` / `!help`"
-        ),
-        inline=False
-    )
+    if error:
 
-    embed.add_field(
-        name="🌐 Information",
-        value=(
-            "`serverinfo`\n"
-            "`userinfo`\n"
-            "`botinfo`"
-        ),
-        inline=False
-    )
+        await ctx.send(error)
 
-    embed.add_field(
-        name="🛡️ Moderation",
-        value=(
-            "`clear`\n"
-            "`timeout`\n"
-            "`kick`\n"
-            "`ban`\n"
-            "`warn`\n"
-            "`warnings`\n"
-            "`lock`\n"
-            "`unlock`\n"
-            "`slowmode`"
-        ),
-        inline=False
-    )
+        if channel:
+            await ctx.send(
+                f"🎫 Your existing ticket is: "
+                f"{channel.mention}"
+            )
 
-    embed.add_field(
-        name="🎮 Fun",
-        value=(
-            "`coin`\n"
-            "`dice`\n"
-            "`choose`\n"
-            "`eightball`\n"
-            "`poll`"
-        ),
-        inline=False
-    )
-
-    embed.add_field(
-        name="🚨 Protection",
-        value=(
-            "**5 messages in 5 seconds** "
-            "triggers anti-spam protection."
-        ),
-        inline=False
-    )
+        return
 
     await ctx.send(
-        embed=embed
+        f"🎫 Your ticket has been created: "
+        f"{channel.mention}"
     )
 
 
-# ============================================================
-# COMMAND ERROR HANDLER
-# ============================================================
+# =======================
 
-@bot.event
-async def on_command_error(
-    ctx,
-    error
-):
-
-    if isinstance(
-        error,
-        commands.CommandNotFound
-    ):
-        return
-
-    if isinstance(
-        error,
-        commands.MissingPermissions
-    ):
-
-        await ctx.send(
-            "❌ You don't have permission "
-            "to use this command."
-        )
-
-        return
-
-    if isinstance(
-        error,
-        commands.MissingRequiredArgument
-    ):
-
-        await ctx.send(
-            "❌ You're missing a required argument."
-        )
-
-        return
-
-    if isinstance(
-        error,
-        commands.MemberNotFound
-    ):
-
-        await ctx.send(
-            "❌ I couldn't find that member."
-        )
-
-        return
-
-    if isinstance(
-        error,
-        commands.BadArgument
-    ):
-
-        await ctx.send(
-            "❌ Invalid command argument."
-        )
-
-        return
-
-    if isinstance(
-        error,
-        commands.CommandOnCooldown
-    ):
-
-        await ctx.send(
-            "⏳ Please wait before using "
-            "that command again."
-        )
-
-        return
-
-    print(
-        f"Command error: {error}"
-    )
-
-
-# ============================================================
-# START BOT
-# ============================================================
-
-print(
-    "Starting All Rounder..."
-)
-
-bot.run(TOKEN)
+   
