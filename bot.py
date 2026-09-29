@@ -1,67 +1,30 @@
 import os
-import json
-import random
-import re
-import time
-import asyncio
-
-from collections import defaultdict, deque
-from datetime import timedelta
-
 import discord
 from discord.ext import commands
-
-
-# ============================================================
-# CONFIG
-# ============================================================
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:
-    raise RuntimeError("DISCORD_TOKEN secret was not found.")
+    raise RuntimeError("DISCORD_TOKEN is missing!")
 
-WARNINGS_FILE = "warnings.json"
-
-SPAM_LIMIT = 5
-SPAM_TIME = 5
-
-TICKET_CATEGORY_NAME = "Tickets"
-STAFF_ROLE_NAME = "Staff"
-
-
-# ============================================================
+# -----------------------------
 # INTENTS
-# ============================================================
+# -----------------------------
 
 intents = discord.Intents.default()
-
 intents.message_content = True
 intents.members = True
 
-
-# ============================================================
+# -----------------------------
 # PREFIX
-# ============================================================
-# Commands work with BOTH:
-#
-# hi
-# !hi
-#
-# ticket
-# !ticket
-#
-# help
-# !help
-# ============================================================
+# -----------------------------
 
 def get_prefix(bot, message):
     return ["!", ""]
 
-
-# ============================================================
+# -----------------------------
 # BOT
-# ============================================================
+# -----------------------------
 
 bot = commands.Bot(
     command_prefix=get_prefix,
@@ -69,216 +32,20 @@ bot = commands.Bot(
     help_command=None
 )
 
-
-# ============================================================
-# WARNINGS DATABASE
-# ============================================================
-
-def load_warnings():
-
-    if not os.path.exists(WARNINGS_FILE):
-        return {}
-
-    try:
-        with open(
-            WARNINGS_FILE,
-            "r",
-            encoding="utf-8"
-        ) as file:
-            return json.load(file)
-
-    except Exception as error:
-        print(f"Warning database error: {error}")
-        return {}
-
-
-warnings = load_warnings()
-
-
-def save_warnings():
-
-    try:
-        with open(
-            WARNINGS_FILE,
-            "w",
-            encoding="utf-8"
-        ) as file:
-            json.dump(
-                warnings,
-                file,
-                indent=4
-            )
-
-    except Exception as error:
-        print(f"Could not save warnings: {error}")
-
-
-# ============================================================
-# ANTI-SPAM
-# ============================================================
-
-message_history = defaultdict(
-    lambda: deque(maxlen=10)
-)
-
-INVITE_PATTERN = re.compile(
-    r"(discord\.gg/|discord\.com/invite/)",
-    re.IGNORECASE
-)
-
-
-async def punish_spammer(message, reason):
-
-    member = message.author
-
-    if not isinstance(
-        member,
-        discord.Member
-    ):
-        return
-
-    if member.guild_permissions.administrator:
-        return
-
-    try:
-
-        await member.timeout(
-            timedelta(minutes=1),
-            reason=reason
-        )
-
-        await message.channel.send(
-            f"⚠️ {member.mention} was timed out "
-            f"for **1 minute**.\n"
-            f"**Reason:** {reason}"
-        )
-
-    except discord.Forbidden:
-
-        print(
-            "❌ Missing permission to timeout member."
-        )
-
-    except Exception as error:
-
-        print(
-            f"❌ Anti-spam error: {error}"
-        )
-
-
-# ============================================================
+# -----------------------------
 # READY
-# ============================================================
+# -----------------------------
 
 @bot.event
 async def on_ready():
+    print(f"Logged in as: {bot.user}")
+    print(f"Bot ID: {bot.user.id}")
+    print(f"Servers: {len(bot.guilds)}")
+    print("All Rounder is ONLINE!")
 
-    print(
-        f"Logged in as: {bot.user}"
-    )
-
-    print(
-        f"Bot ID: {bot.user.id}"
-    )
-
-    print(
-        f"Servers: {len(bot.guilds)}"
-    )
-
-    print(
-        "All Rounder is ONLINE!"
-    )
-
-    try:
-
-        await bot.change_presence(
-            activity=discord.Game(
-                name="help or !help"
-            )
-        )
-
-    except Exception as error:
-
-        print(
-            f"Presence error: {error}"
-        )
-
-
-# ============================================================
-# PERSISTENT TICKET BUTTON
-# ============================================================
-
-@bot.event
-async def setup_hook():
-
-    # Makes old ticket buttons continue
-    # working after bot restarts.
-    bot.add_view(
-        TicketView()
-    )
-
-
-# ============================================================
-# MEMBER JOIN
-# ============================================================
-
-@bot.event
-async def on_member_join(member):
-
-    channel = discord.utils.find(
-        lambda c: c.name.lower() in [
-            "welcome",
-            "general",
-            "chat"
-        ],
-        member.guild.text_channels
-    )
-
-    if channel:
-
-        try:
-
-            await channel.send(
-                f"👋 Welcome {member.mention} "
-                f"to **{member.guild.name}**!"
-            )
-
-        except discord.Forbidden:
-            pass
-
-
-# ============================================================
-# MEMBER LEAVE
-# ============================================================
-
-@bot.event
-async def on_member_remove(member):
-
-    channel = discord.utils.find(
-        lambda c: c.name.lower() in [
-            "welcome",
-            "general",
-            "chat"
-        ],
-        member.guild.text_channels
-    )
-
-    if channel:
-
-        try:
-
-            await channel.send(
-                f"👋 **{member.name}** has left "
-                f"the server."
-            )
-
-        except discord.Forbidden:
-            pass
-
-
-# ============================================================
-# MESSAGE / ANTI-SPAM
-# ============================================================
+# -----------------------------
+# MESSAGE PROCESSING
+# -----------------------------
 
 @bot.event
 async def on_message(message):
@@ -286,792 +53,408 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # Allow commands in DMs
-    if message.guild is None:
-
-        await bot.process_commands(message)
-        return
-
-    # Separate spam tracking per server
-    key = (
-        message.guild.id,
-        message.author.id
-    )
-
-    now = time.time()
-
-    history = message_history[key]
-
-    history.append({
-        "time": now,
-        "content": message.content
-    })
-
-    while (
-        history
-        and now - history[0]["time"] > SPAM_TIME
-    ):
-        history.popleft()
-
-
-    # --------------------------------------------------------
-    # 5 MESSAGES / 5 SECONDS
-    # --------------------------------------------------------
-
-    if len(history) >= SPAM_LIMIT:
-
-        await message.channel.send(
-            f"🚨 {message.author.mention} "
-            f"**Spam detected!**\n"
-            f"Please slow down."
-        )
-
-        await punish_spammer(
-            message,
-            "5 messages sent within 5 seconds."
-        )
-
-        history.clear()
-
-        return
-
-
-    # --------------------------------------------------------
-    # REPEATED MESSAGE
-    # --------------------------------------------------------
-
-    recent = [
-        item["content"]
-        for item in list(history)[-3:]
-    ]
-
-    if (
-        len(recent) == 3
-        and len(set(recent)) == 1
-        and recent[0] != ""
-    ):
-
-        await message.channel.send(
-            f"⚠️ {message.author.mention} "
-            f"Repeated messages detected."
-        )
-
-        await punish_spammer(
-            message,
-            "Repeated messages detected."
-        )
-
-        history.clear()
-
-        return
-
-
-    # --------------------------------------------------------
-    # DISCORD INVITE
-    # --------------------------------------------------------
-
-    if INVITE_PATTERN.search(
-        message.content
-    ):
-
-        try:
-            await message.delete()
-        except discord.Forbidden:
-            pass
-
-        await message.channel.send(
-            f"⚠️ {message.author.mention} "
-            f"Discord invite links are not allowed."
-        )
-
-        await punish_spammer(
-            message,
-            "Discord invite detected."
-        )
-
-        return
-
-
-    # --------------------------------------------------------
-    # MASS MENTION
-    # --------------------------------------------------------
-
-    if len(message.mentions) >= 5:
-
-        await message.channel.send(
-            f"⚠️ {message.author.mention} "
-            f"Mass mentions detected."
-        )
-
-        await punish_spammer(
-            message,
-            "Mass mentions detected."
-        )
-
-        return
-
-
-    # --------------------------------------------------------
-    # PROCESS COMMANDS
-    # --------------------------------------------------------
-
     await bot.process_commands(message)
 
-
-# ============================================================
+# -----------------------------
 # BASIC COMMANDS
-# ============================================================
+# -----------------------------
 
 @bot.command()
 async def hi(ctx):
-
-    await ctx.send(
-        f"👋 Hi {ctx.author.mention}!"
-    )
-
+    await ctx.send(f"👋 Hi {ctx.author.mention}!")
 
 @bot.command()
 async def hello(ctx):
-
-    await ctx.send(
-        f"👋 Hello {ctx.author.mention}!"
-    )
-
+    await ctx.send(f"👋 Hello {ctx.author.mention}!")
 
 @bot.command()
 async def ping(ctx):
-
-    latency = round(
-        bot.latency * 1000
-    )
-
     await ctx.send(
-        f"🏓 Pong! `{latency}ms`"
+        f"🏓 Pong! `{round(bot.latency * 1000)}ms`"
     )
-
 
 # ============================================================
-# SERVER INFO
+# TICKET SYSTEM
 # ============================================================
 
-@bot.command()
-async def serverinfo(ctx):
+TICKET_CATEGORY = "Tickets"
 
-    guild = ctx.guild
-
-    embed = discord.Embed(
-        title="🌐 Server Information",
-        color=discord.Color.blue()
-    )
-
-    embed.add_field(
-        name="Server",
-        value=guild.name,
-        inline=False
-    )
-
-    embed.add_field(
-        name="Members",
-        value=guild.member_count,
-        inline=True
-    )
-
-    embed.add_field(
-        name="Channels",
-        value=len(guild.channels),
-        inline=True
-    )
-
-    embed.add_field(
-        name="Roles",
-        value=len(guild.roles),
-        inline=True
-    )
-
-    await ctx.send(
-        embed=embed
-    )
-
-
-# ============================================================
-# USER INFO
-# ============================================================
-
-@bot.command()
-async def userinfo(
-    ctx,
-    member: discord.Member = None
-):
-
-    member = member or ctx.author
-
-    embed = discord.Embed(
-        title="👤 User Information",
-        color=discord.Color.green()
-    )
-
-    embed.add_field(
-        name="Username",
-        value=str(member),
-        inline=False
-    )
-
-    embed.add_field(
-        name="ID",
-        value=str(member.id),
-        inline=False
-    )
-
-    embed.add_field(
-        name="Joined Server",
-        value=(
-            member.joined_at.strftime(
-                "%d %B %Y"
-            )
-            if member.joined_at
-            else "Unknown"
-        ),
-        inline=False
-    )
-
-    await ctx.send(
-        embed=embed
-    )
-
-
-# ============================================================
-# CLEAR
-# ============================================================
-
-@bot.command()
-@commands.has_permissions(
-    manage_messages=True
-)
-async def clear(
-    ctx,
-    amount: int = 10
-):
-
-    amount = max(
-        1,
-        min(amount, 100)
-    )
-
-    deleted = await ctx.channel.purge(
-        limit=amount + 1
-    )
-
-    msg = await ctx.send(
-        f"🧹 Deleted {len(deleted) - 1} messages."
-    )
-
-    await msg.delete(
-        delay=5
-    )
-
-
-# ============================================================
-# TIMEOUT
-# ============================================================
-
-@bot.command()
-@commands.has_permissions(
-    moderate_members=True
-)
-async def timeout(
-    ctx,
-    member: discord.Member,
-    minutes: int = 1
-):
-
-    minutes = max(
-        1,
-        min(minutes, 10080)
-    )
-
-    await member.timeout(
-        timedelta(minutes=minutes),
-        reason=f"Timeout by {ctx.author}"
-    )
-
-    await ctx.send(
-        f"🔇 {member.mention} was timed out "
-        f"for {minutes} minute(s)."
-    )
-
-
-# ============================================================
-# KICK
-# ============================================================
-
-@bot.command()
-@commands.has_permissions(
-    kick_members=True
-)
-async def kick(
-    ctx,
-    member: discord.Member,
-    *,
-    reason="No reason provided"
-):
-
-    await member.kick(
-        reason=reason
-    )
-
-    await ctx.send(
-        f"👢 {member.mention} was kicked.\n"
-        f"**Reason:** {reason}"
-    )
-
-
-# ============================================================
-# BAN
-# ============================================================
-
-@bot.command()
-@commands.has_permissions(
-    ban_members=True
-)
-async def ban(
-    ctx,
-    member: discord.Member,
-    *,
-    reason="No reason provided"
-):
-
-    await member.ban(
-        reason=reason
-    )
-
-    await ctx.send(
-        f"🔨 {member.mention} was banned.\n"
-        f"**Reason:** {reason}"
-    )
-
-
-# ============================================================
-# WARN
-# ============================================================
-
-@bot.command()
-@commands.has_permissions(
-    moderate_members=True
-)
-async def warn(
-    ctx,
-    member: discord.Member,
-    *,
-    reason="No reason provided"
-):
-
-    guild_id = str(
-        ctx.guild.id
-    )
-
-    user_id = str(
-        member.id
-    )
-
-    if guild_id not in warnings:
-        warnings[guild_id] = {}
-
-    if user_id not in warnings[guild_id]:
-        warnings[guild_id][user_id] = []
-
-    warnings[guild_id][user_id].append(
-        reason
-    )
-
-    save_warnings()
-
-    count = len(
-        warnings[guild_id][user_id]
-    )
-
-    await ctx.send(
-        f"⚠️ {member.mention} has been warned.\n"
-        f"**Reason:** {reason}\n"
-        f"**Total warnings:** {count}"
-    )
-
-
-# ============================================================
-# WARNINGS
-# ============================================================
-
-@bot.command(
-    name="warnings"
-)
-async def warnings_command(
-    ctx,
-    member: discord.Member = None
-):
-
-    member = member or ctx.author
-
-    guild_id = str(
-        ctx.guild.id
-    )
-
-    user_id = str(
-        member.id
-    )
-
-    user_warnings = warnings.get(
-        guild_id,
-        {}
-    ).get(
-        user_id,
-        []
-    )
-
-    if not user_warnings:
-
-        await ctx.send(
-            f"✅ {member.mention} has no warnings."
-        )
-
-        return
-
-    text = "\n".join(
-        f"{i + 1}. {reason}"
-        for i, reason
-        in enumerate(user_warnings)
-    )
-
-    await ctx.send(
-        f"⚠️ Warnings for {member.mention}:\n"
-        f"{text}"
-    )
-
-
-# ============================================================
-# COIN
-# ============================================================
-
-@bot.command()
-async def coin(ctx):
-
-    result = random.choice(
-        [
-            "Heads",
-            "Tails"
-        ]
-    )
-
-    await ctx.send(
-        f"🪙 **{result}!**"
-    )
-
-
-# ============================================================
-# DICE
-# ============================================================
-
-@bot.command()
-async def dice(ctx):
-
-    result = random.randint(
-        1,
-        6
-    )
-
-    await ctx.send(
-        f"🎲 You rolled **{result}**!"
-    )
-
-
-# ============================================================
-# CHOOSE
-# ============================================================
-
-@bot.command()
-async def choose(
-    ctx,
-    *choices
-):
-
-    if len(choices) < 2:
-
-        await ctx.send(
-            "❌ Give me at least two choices."
-        )
-
-        return
-
-    result = random.choice(
-        choices
-    )
-
-    await ctx.send(
-        f"🤔 I choose **{result}**!"
-    )
-
-
-# ============================================================
-# EIGHT BALL
-# ============================================================
-
-@bot.command(
-    name="eightball"
-)
-async def eightball(
-    ctx,
-    *,
-    question=None
-):
-
-    if not question:
-
-        await ctx.send(
-            "🎱 Ask me a question!"
-        )
-
-        return
-
-    answers = [
-        "Yes! ✅",
-        "No. ❌",
-        "Maybe. 🤔",
-        "Definitely! 🔥",
-        "Not sure. 😅",
-        "Ask again later. 🔮"
-    ]
-
-    await ctx.send(
-        f"🎱 **{random.choice(answers)}**"
-    )
-
-
-# ============================================================
-# POLL
-# ============================================================
-
-@bot.command()
-async def poll(
-    ctx,
-    *,
-    question
-):
-
-    message = await ctx.send(
-        f"📊 **Poll**\n\n"
-        f"{question}\n\n"
-        f"👍 = Yes\n"
-        f"👎 = No"
-    )
-
-    await message.add_reaction("👍")
-    await message.add_reaction("👎")
-
-
-# ============================================================
-# LOCK
-# ============================================================
-
-@bot.command()
-@commands.has_permissions(
-    manage_channels=True
-)
-async def lock(ctx):
-
-    overwrite = ctx.channel.overwrites_for(
-        ctx.guild.default_role
-    )
-
-    overwrite.send_messages = False
-
-    await ctx.channel.set_permissions(
-        ctx.guild.default_role,
-        overwrite=overwrite
-    )
-
-    await ctx.send(
-        "🔒 Channel locked."
-    )
-
-
-# ============================================================
-# UNLOCK
-# ============================================================
-
-@bot.command()
-@commands.has_permissions(
-    manage_channels=True
-)
-async def unlock(ctx):
-
-    overwrite = ctx.channel.overwrites_for(
-        ctx.guild.default_role
-    )
-
-    overwrite.send_messages = None
-
-    await ctx.channel.set_permissions(
-        ctx.guild.default_role,
-        overwrite=overwrite
-    )
-
-    await ctx.send(
-        "🔓 Channel unlocked."
-    )
-
-
-# ============================================================
-# SLOWMODE
-# ============================================================
-
-@bot.command()
-@commands.has_permissions(
-    manage_channels=True
-)
-async def slowmode(
-    ctx,
-    seconds: int = 0
-):
-
-    seconds = max(
-        0,
-        min(seconds, 21600)
-    )
-
-    await ctx.channel.edit(
-        slowmode_delay=seconds
-    )
-
-    await ctx.send(
-        f"🐢 Slowmode set to "
-        f"**{seconds} seconds**."
-    )
-
-
-# ============================================================
-# BOT INFO
-# ============================================================
-
-@bot.command()
-async def botinfo(ctx):
-
-    latency = round(
-        bot.latency * 1000
-    )
-
-    embed = discord.Embed(
-        title="🤖 All Rounder",
-        description="Your Discord server assistant.",
-        color=discord.Color.gold()
-    )
-
-    embed.add_field(
-        name="Servers",
-        value=len(bot.guilds),
-        inline=True
-    )
-
-    embed.add_field(
-        name="Latency",
-        value=f"{latency}ms",
-        inline=True
-    )
-
-    embed.add_field(
-        name="Commands",
-        value="! or no prefix",
-        inline=False
-    )
-
-    embed.add_field(
-        name="Anti-Spam",
-        value="5 messages / 5 seconds",
-        inline=False
-    )
-
-    await ctx.send(
-        embed=embed
-    )
-
-
-# ============================================================
-# TICKET FUNCTIONS
-# ============================================================
 
 def get_ticket_category(guild):
 
-    return discord.utils.get(
-        guild.categories,
-        name=TICKET_CATEGORY_NAME
+    for category in guild.categories:
+        if category.name == TICKET_CATEGORY:
+            return category
+
+    return None
+
+
+async def create_ticket(ctx):
+
+    guild = ctx.guild
+    member = ctx.author
+
+    # Find existing Tickets category
+    category = get_ticket_category(guild)
+
+    # Create category if needed
+    if category is None:
+
+        try:
+            category = await guild.create_category(
+                TICKET_CATEGORY,
+                reason="All Rounder ticket system"
+            )
+
+        except discord.Forbidden:
+            await ctx.send(
+                "❌ I need **Manage Channels** permission "
+                "to create tickets."
+            )
+            return
+
+        except Exception as e:
+            print(f"Category error: {e}")
+            await ctx.send(
+                "❌ Could not create the Tickets category."
+            )
+            return
+
+    # Check existing ticket
+    for channel in category.text_channels:
+
+        if channel.topic == f"ticket_owner:{member.id}":
+
+            await ctx.send(
+                f"⚠️ You already have a ticket: "
+                f"{channel.mention}"
+            )
+            return
+
+    # Safe channel name
+    username = "".join(
+        c for c in member.name.lower()
+        if c.isalnum() or c == "-"
     )
 
+    channel_name = f"ticket-{username}"
 
-async def create_ticket_category(guild):
+    # Permissions
+    overwrites = {
 
-    category = get_ticket_category(
-        guild
-    )
+        guild.default_role:
+        discord.PermissionOverwrite(
+            view_channel=False
+        ),
 
-    if category:
-        return category
+        member:
+        discord.PermissionOverwrite(
+            view_channel=True,
+            send_messages=True,
+            read_message_history=True,
+            attach_files=True
+        ),
+
+        guild.me:
+        discord.PermissionOverwrite(
+            view_channel=True,
+            send_messages=True,
+            read_message_history=True,
+            manage_channels=True,
+            manage_messages=True
+        )
+    }
 
     try:
 
-        return await guild.create_category(
-            TICKET_CATEGORY_NAME,
-            reason="All Rounder ticket system"
+        channel = await guild.create_text_channel(
+            channel_name,
+            category=category,
+            topic=f"ticket_owner:{member.id}",
+            overwrites=overwrites,
+            reason="All Rounder ticket"
+        )
+
+        await channel.send(
+            f"🎫 Welcome {member.mention}!\n\n"
+            "Please describe your problem here.\n\n"
+            "When finished, use `!close` to close this ticket."
+        )
+
+        await ctx.send(
+            f"🎫 Ticket created: {channel.mention}"
         )
 
     except discord.Forbidden:
 
-        return None
-
-
-def is_ticket_channel(channel):
-
-    return (
-        isinstance(
-            channel,
-            discord.TextChannel
+        await ctx.send(
+            "❌ I don't have enough permissions to "
+            "create the ticket channel.\n\n"
+            "Give me **Manage Channels** permission."
         )
-        and channel.category is not None
-        and channel.category.name
-        == TICKET_CATEGORY_NAME
+
+    except Exception as e:
+
+        print(f"Ticket error: {e}")
+
+        await ctx.send(
+            "❌ Ticket creation failed."
+        )
+
+
+# -----------------------------
+# TICKET COMMAND
+# -----------------------------
+
+@bot.command()
+@commands.guild_only()
+async def ticket(ctx):
+
+    await create_ticket(ctx)
+
+
+# ============================================================
+# CLOSE TICKET
+# ============================================================
+
+@bot.command()
+@commands.guild_only()
+async def close(ctx):
+
+    if ctx.channel.category is None:
+        await ctx.send(
+            "❌ This is not a ticket channel."
+        )
+        return
+
+    if ctx.channel.category.name != TICKET_CATEGORY:
+        await ctx.send(
+            "❌ This is not a ticket channel."
+        )
+        return
+
+    await ctx.send(
+        "🔒 Closing this ticket in 5 seconds..."
+    )
+
+    await discord.utils.sleep_until(
+        discord.utils.utcnow() +
+        __import__("datetime").timedelta(seconds=5)
+    )
+
+    try:
+        await ctx.channel.delete(
+            reason="Ticket closed"
+        )
+
+    except discord.Forbidden:
+        await ctx.send(
+            "❌ I cannot delete this channel."
+        )
+
+
+# ============================================================
+# TICKET BUTTON
+# ============================================================
+
+class TicketView(discord.ui.View):
+
+    def __init__(self):
+
+        super().__init__(
+            timeout=None
+        )
+
+    @discord.ui.button(
+        label="Create Ticket",
+        emoji="🎫",
+        style=discord.ButtonStyle.green,
+        custom_id="all_rounder_ticket_button"
+    )
+    async def ticket_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+
+        guild = interaction.guild
+        member = interaction.user
+
+        if guild is None:
+            await interaction.response.send_message(
+                "❌ Tickets only work inside a server.",
+                ephemeral=True
+            )
+            return
+
+        # Find category
+        category = get_ticket_category(guild)
+
+        if category is None:
+
+            try:
+
+                category = await guild.create_category(
+                    TICKET_CATEGORY,
+                    reason="All Rounder ticket system"
+                )
+
+            except discord.Forbidden:
+
+                await interaction.response.send_message(
+                    "❌ I need **Manage Channels** permission.",
+                    ephemeral=True
+                )
+                return
+
+        # Existing ticket
+        for channel in category.text_channels:
+
+            if channel.topic == f"ticket_owner:{member.id}":
+
+                await interaction.response.send_message(
+                    f"⚠️ You already have a ticket: "
+                    f"{channel.mention}",
+                    ephemeral=True
+                )
+                return
+
+        username = "".join(
+            c for c in member.name.lower()
+            if c.isalnum() or c == "-"
+        )
+
+        channel_name = f"ticket-{username}"
+
+        overwrites = {
+
+            guild.default_role:
+            discord.PermissionOverwrite(
+                view_channel=False
+            ),
+
+            member:
+            discord.PermissionOverwrite(
+                view_channel=True,
+                send_messages=True,
+                read_message_history=True,
+                attach_files=True
+            ),
+
+            guild.me:
+            discord.PermissionOverwrite(
+                view_channel=True,
+                send_messages=True,
+                read_message_history=True,
+                manage_channels=True,
+                manage_messages=True
+            )
+        }
+
+        try:
+
+            channel = await guild.create_text_channel(
+                channel_name,
+                category=category,
+                topic=f"ticket_owner:{member.id}",
+                overwrites=overwrites,
+                reason="All Rounder ticket"
+            )
+
+            await channel.send(
+                f"🎫 Welcome {member.mention}!\n\n"
+                "Please describe your problem here.\n\n"
+                "Use `!close` when finished."
+            )
+
+            await interaction.response.send_message(
+                f"🎫 Your ticket was created: "
+                f"{channel.mention}",
+                ephemeral=True
+            )
+
+        except discord.Forbidden:
+
+            await interaction.response.send_message(
+                "❌ I need **Manage Channels** permission.",
+                ephemeral=True
+            )
+
+
+# ============================================================
+# TICKET PANEL
+# ============================================================
+
+@bot.command()
+@commands.guild_only()
+@commands.has_permissions(manage_channels=True)
+async def ticketpanel(ctx):
+
+    embed = discord.Embed(
+        title="🎫 All Rounder Support",
+        description=(
+            "Need help?\n\n"
+            "Click the button below to create "
+            "a private support ticket."
+        ),
+        color=discord.Color.blue()
+    )
+
+    await ctx.send(
+        embed=embed,
+        view=TicketView()
     )
 
 
-def get_ticket_owner(channel):
+# ============================================================
+# HELP
+# ============================================================
 
-    if not channel.topic:
-        return None
+@bot.command()
+async def help(ctx):
 
-    prefix = "ticket_owner:"
+    await ctx.send(
+        "**🤖 All Rounder Commands**\n\n"
+        "👋 `hi`\n"
+        "👋 `hello`\n"
+        "🏓 `ping`\n\n"
+        "🎫 `ticket` — Create a ticket\n"
+        "🔒 `close` — Close ticket\n"
+        "🎫 `ticketpanel` — Create ticket button\n\n"
+        "Commands also work with `!`."
+    )
 
-    if not channel.topic.startswith(
-        prefix
-    ):
-        return None
 
-    try:
+# ============================================================
+# ERROR HANDLER
+# ============================================================
 
-        return int(
-            channel.topic[
-                len(prefix):
-            ]
+@bot.event
+async def on_command_error(ctx, error):
+
+    if isinstance(error, commands.CommandNotFound):
+        return
+
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send(
+            "❌ You don't have permission "
+            "to use this command."
         )
+        return
 
-    except ValueError:
+    if isinstance(error, commands.NoPrivateMessage):
+        await ctx.send(
+            "❌ This command only works inside a server."
+        )
+        return
 
-        return None
+    print(f"Command error: {error}")
 
 
-def is_staff(member):
+# ============================================================
+# START
+# ============================================================
 
-    if not isinstance(
-        member,
-        discord.Member
-    ):
-        return False
+print("Starting All Rounder...")
 
-    if member.guild_permissions.administrator:
-        return True
-
-    if member.guild_permissions.
+bot.run(TOKEN)
