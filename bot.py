@@ -13,7 +13,7 @@ from discord.ext import commands
 
 
 # ============================================================
-# CONFIGURATION
+# CONFIG
 # ============================================================
 
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -43,22 +43,20 @@ intents.members = True
 # ============================================================
 # PREFIX
 # ============================================================
+# Commands work with BOTH:
+#
+# hi
+# !hi
+#
+# ticket
+# !ticket
+#
+# help
+# !help
+# ============================================================
 
 def get_prefix(bot, message):
-
-    content = message.content.strip()
-
-    if not content:
-        return ["!"]
-
-    first_word = content.split()[0].lower()
-
-    command_name = first_word.lstrip("!")
-
-    if bot.get_command(command_name):
-        return ["", "!"]
-
-    return ["!"]
+    return ["!", ""]
 
 
 # ============================================================
@@ -73,7 +71,7 @@ bot = commands.Bot(
 
 
 # ============================================================
-# WARNING DATABASE
+# WARNINGS DATABASE
 # ============================================================
 
 def load_warnings():
@@ -82,19 +80,15 @@ def load_warnings():
         return {}
 
     try:
-
         with open(
             WARNINGS_FILE,
             "r",
             encoding="utf-8"
         ) as file:
-
             return json.load(file)
 
     except Exception as error:
-
         print(f"Warning database error: {error}")
-
         return {}
 
 
@@ -104,13 +98,11 @@ warnings = load_warnings()
 def save_warnings():
 
     try:
-
         with open(
             WARNINGS_FILE,
             "w",
             encoding="utf-8"
         ) as file:
-
             json.dump(
                 warnings,
                 file,
@@ -118,7 +110,6 @@ def save_warnings():
             )
 
     except Exception as error:
-
         print(f"Could not save warnings: {error}")
 
 
@@ -136,10 +127,7 @@ INVITE_PATTERN = re.compile(
 )
 
 
-async def punish_spammer(
-    message,
-    reason
-):
+async def punish_spammer(message, reason):
 
     member = message.author
 
@@ -217,6 +205,20 @@ async def on_ready():
 
 
 # ============================================================
+# PERSISTENT TICKET BUTTON
+# ============================================================
+
+@bot.event
+async def setup_hook():
+
+    # Makes old ticket buttons continue
+    # working after bot restarts.
+    bot.add_view(
+        TicketView()
+    )
+
+
+# ============================================================
 # MEMBER JOIN
 # ============================================================
 
@@ -224,12 +226,11 @@ async def on_ready():
 async def on_member_join(member):
 
     channel = discord.utils.find(
-        lambda c:
-            c.name.lower() in [
-                "welcome",
-                "general",
-                "chat"
-            ],
+        lambda c: c.name.lower() in [
+            "welcome",
+            "general",
+            "chat"
+        ],
         member.guild.text_channels
     )
 
@@ -243,7 +244,6 @@ async def on_member_join(member):
             )
 
         except discord.Forbidden:
-
             pass
 
 
@@ -255,12 +255,11 @@ async def on_member_join(member):
 async def on_member_remove(member):
 
     channel = discord.utils.find(
-        lambda c:
-            c.name.lower() in [
-                "welcome",
-                "general",
-                "chat"
-            ],
+        lambda c: c.name.lower() in [
+            "welcome",
+            "general",
+            "chat"
+        ],
         member.guild.text_channels
     )
 
@@ -274,7 +273,6 @@ async def on_member_remove(member):
             )
 
         except discord.Forbidden:
-
             pass
 
 
@@ -288,13 +286,13 @@ async def on_message(message):
     if message.author.bot:
         return
 
+    # Allow commands in DMs
     if message.guild is None:
 
         await bot.process_commands(message)
-
         return
 
-    # Separate spam tracking for each server
+    # Separate spam tracking per server
     key = (
         message.guild.id,
         message.author.id
@@ -313,7 +311,6 @@ async def on_message(message):
         history
         and now - history[0]["time"] > SPAM_TIME
     ):
-
         history.popleft()
 
 
@@ -378,11 +375,8 @@ async def on_message(message):
     ):
 
         try:
-
             await message.delete()
-
         except discord.Forbidden:
-
             pass
 
         await message.channel.send(
@@ -417,11 +411,15 @@ async def on_message(message):
         return
 
 
+    # --------------------------------------------------------
+    # PROCESS COMMANDS
+    # --------------------------------------------------------
+
     await bot.process_commands(message)
 
 
 # ============================================================
-# BASIC
+# BASIC COMMANDS
 # ============================================================
 
 @bot.command()
@@ -554,16 +552,10 @@ async def clear(
     amount: int = 10
 ):
 
-    if amount < 1:
-
-        await ctx.send(
-            "❌ Amount must be at least 1."
-        )
-
-        return
-
-    if amount > 100:
-        amount = 100
+    amount = max(
+        1,
+        min(amount, 100)
+    )
 
     deleted = await ctx.channel.purge(
         limit=amount + 1
@@ -592,11 +584,10 @@ async def timeout(
     minutes: int = 1
 ):
 
-    if minutes < 1:
-        minutes = 1
-
-    if minutes > 10080:
-        minutes = 10080
+    minutes = max(
+        1,
+        min(minutes, 10080)
+    )
 
     await member.timeout(
         timedelta(minutes=minutes),
@@ -674,8 +665,13 @@ async def warn(
     reason="No reason provided"
 ):
 
-    guild_id = str(ctx.guild.id)
-    user_id = str(member.id)
+    guild_id = str(
+        ctx.guild.id
+    )
+
+    user_id = str(
+        member.id
+    )
 
     if guild_id not in warnings:
         warnings[guild_id] = {}
@@ -714,8 +710,13 @@ async def warnings_command(
 
     member = member or ctx.author
 
-    guild_id = str(ctx.guild.id)
-    user_id = str(member.id)
+    guild_id = str(
+        ctx.guild.id
+    )
+
+    user_id = str(
+        member.id
+    )
 
     user_warnings = warnings.get(
         guild_id,
@@ -930,11 +931,10 @@ async def slowmode(
     seconds: int = 0
 ):
 
-    if seconds < 0:
-        seconds = 0
-
-    if seconds > 21600:
-        seconds = 21600
+    seconds = max(
+        0,
+        min(seconds, 21600)
+    )
 
     await ctx.channel.edit(
         slowmode_delay=seconds
@@ -959,9 +959,7 @@ async def botinfo(ctx):
 
     embed = discord.Embed(
         title="🤖 All Rounder",
-        description=(
-            "Your Discord server assistant."
-        ),
+        description="Your Discord server assistant.",
         color=discord.Color.gold()
     )
 
@@ -978,8 +976,8 @@ async def botinfo(ctx):
     )
 
     embed.add_field(
-        name="Prefix",
-        value="`!` or no prefix",
+        name="Commands",
+        value="! or no prefix",
         inline=False
     )
 
@@ -995,7 +993,7 @@ async def botinfo(ctx):
 
 
 # ============================================================
-# TICKET HELPERS
+# TICKET FUNCTIONS
 # ============================================================
 
 def get_ticket_category(guild):
@@ -1006,9 +1004,7 @@ def get_ticket_category(guild):
     )
 
 
-async def create_ticket_category(
-    guild
-):
+async def create_ticket_category(guild):
 
     category = get_ticket_category(
         guild
@@ -1078,18 +1074,4 @@ def is_staff(member):
     if member.guild_permissions.administrator:
         return True
 
-    if member.guild_permissions.manage_channels:
-        return True
-
-    return any(
-        role.name.lower()
-        == STAFF_ROLE_NAME.lower()
-        for role in member.roles
-    )
-
-
-def can_manage_ticket(
-    ctx
-):
-
-    owner_i
+    if member.guild_permissions.
